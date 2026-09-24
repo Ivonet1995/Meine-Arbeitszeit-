@@ -191,7 +191,23 @@ Einstellungen speichern
 
 </div>
 
+<div id="adminArea" class="card hidden">
 
+<h3>👥 Mitarbeiterverwaltung</h3>
+
+<div class="muted">
+Admin-Bereich
+</div>
+
+<div id="employeeList">
+Mitarbeiter werden geladen…
+</div>
+
+<button class="secondary" onclick="loadEmployees()">
+Mitarbeiter aktualisieren
+</button>
+
+</div>
 <div class="card">
 <button class="secondary" onclick="logout()">Abmelden</button>
 </div>
@@ -442,10 +458,97 @@ profile.workdays_per_week || 5;
 $("welcome").textContent =
 (profile.full_name || currentUser.email)
 + " · Cloud-Speicherung";
+if(profile.role === "admin"){
+
+$("adminArea").classList.remove("hidden");
+
+loadEmployees();
+
+}
+else{
+
+$("adminArea").classList.add("hidden");
+
+}
+}
+
+async function loadEmployees(){
+
+if(!profile || profile.role !== "admin")
+return;
+
+const {data,error} =
+await sb
+.from("profiles")
+.select("id,full_name,role,daily_target_minutes,workdays_per_week")
+.order("full_name");
+
+
+if(error){
+
+alert(
+"Mitarbeiter konnten nicht geladen werden: "
++
+error.message
+);
+
+return;
 
 }
 
 
+const box =
+$("employeeList");
+
+
+if(!data || !data.length){
+
+box.innerHTML =
+'<p class="muted">Noch keine Mitarbeiter vorhanden.</p>';
+
+return;
+
+}
+
+
+box.innerHTML =
+data.map(employee => {
+
+return `
+
+<div class="row">
+
+<div>
+
+<b>
+${employee.full_name || "Ohne Name"}
+</b>
+
+<br>
+
+<span class="muted">
+${employee.role === "admin"
+? "Administrator"
+: "Mitarbeiter"}
+</span>
+
+</div>
+
+<div>
+
+<span class="badge">
+${(employee.daily_target_minutes || 480) / 60} h/Tag
+</span>
+
+</div>
+
+</div>
+
+`;
+
+}).join("");
+
+}
 async function loadEntries(){
 
 const {data,error} =
