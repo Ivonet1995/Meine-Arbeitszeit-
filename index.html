@@ -1,18 +1,1010 @@
-<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><title>Arbeitszeit</title><style>
-body{margin:0;background:#f2f2f7;color:#111;font-family:-apple-system,BlinkMacSystemFont,Arial,sans-serif}.wrap{max-width:560px;margin:auto;padding:18px 15px 40px}h1{font-size:32px;margin:8px 0 3px}.sub,.muted{color:#777}.card{background:#fff;border-radius:18px;padding:17px;margin:12px 0;box-shadow:0 1px 4px #0001}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}label{font-size:13px;color:#666;display:block;margin:0 0 5px}input,select{width:100%;padding:12px;border:1px solid #ddd;border-radius:12px;font-size:17px;background:#fafafa;box-sizing:border-box}button{width:100%;border:0;border-radius:13px;padding:13px;font-size:16px;font-weight:650;background:#07f;color:#fff;margin-top:11px}.secondary{background:#e9e9ee;color:#111}.total{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{background:#f7f7fa;border-radius:14px;padding:13px}.big{font-size:27px;font-weight:750}.row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #eee;gap:8px}.row:last-child{border:0}.danger{width:auto;margin:0;padding:3px;background:none;color:#d00;font-size:13px}.good{background:#e6f7ea}.minus{background:#fff0f0}.badge{padding:5px 8px;border-radius:8px;background:#eee;font-size:12px}</style></head><body><div class="wrap">
-<h1>Arbeitszeit</h1><div class="sub">Arbeitszeit, Sollstunden & Überstunden</div>
-<div class="card"><h3>Arbeitszeit eintragen</h3><div class="grid"><div><label>Datum</label><input id="date" type="date"></div><div><label>Art</label><select id="type"><option value="work">Arbeit</option><option value="vacation">Urlaub</option><option value="sick">Krank</option></select></div></div><div id="fields"><div class="grid" style="margin-top:10px"><div><label>Beginn</label><input id="start" type="time" value="08:00"></div><div><label>Ende</label><input id="end" type="time" value="17:00"></div></div><label style="margin-top:10px">Pause (Min.)</label><input id="break" type="number" min="0" value="30"></div><button onclick="add()">Speichern</button></div>
-<div class="card"><h3>Sollzeit</h3><div class="grid"><div><label>Stunden pro Tag</label><input id="target" type="number" min="0" step=".25"></div><div><label>Tage pro Woche</label><input id="days" type="number" min="1" max="7"></div></div><button class="secondary" onclick="settings()">Einstellungen speichern</button></div>
-<div class="card total"><div class="metric"><div class="muted">Heute</div><div class="big" id="today">0:00 h</div></div><div class="metric" id="otbox"><div class="muted">Überstunden</div><div class="big" id="ot">0:00 h</div></div><div class="metric"><div class="muted">Monat</div><div class="big" id="month">0:00 h</div></div><div class="metric"><div class="muted">Soll bis heute</div><div class="big" id="should">0:00 h</div></div></div>
-<div class="card"><h3>Monatsübersicht</h3><div id="summary"></div></div>
-<div class="card"><h3>Einträge</h3><div id="list"><span class="muted">Noch keine Einträge.</span></div><button class="secondary" onclick="clearAll()">Alle Daten löschen</button></div>
-</div><script>
-const K="arbeitszeit_v2", $=x=>document.getElementById(x);let s=JSON.parse(localStorage.getItem(K)||'{"entries":[],"settings":{"target":8,"days":5}}');s.entries??=[];s.settings??={target:8,days:5};$("date").value=new Date().toISOString().slice(0,10);$("target").value=s.settings.target;$("days").value=s.settings.days;
-function fmt(m){let z=m<0?"-":"",n=Math.abs(Math.round(m));return z+Math.floor(n/60)+":"+String(n%60).padStart(2,"0")+" h"}function save(){localStorage.setItem(K,JSON.stringify(s));render()}
-$("type").onchange=()=>{$("fields").style.display=$("type").value=="work"?"block":"none"};
-function add(){let d=$("date").value,t=$("type").value;if(!d)return alert("Bitte Datum eingeben.");let x={date:d,type:t,mins:s.settings.target*60};if(t=="work"){let a=$("start").value.split(":").map(Number),b=$("end").value.split(":").map(Number),e=b[0]*60+b[1],st=a[0]*60+a[1],br=+$("break").value||0;if(e<st)e+=1440;x={date:d,type:t,start:$("start").value,end:$("end").value,br,mins:e-st-br};if(x.mins<0)return alert("Die Arbeitszeit ist nach Abzug der Pause negativ.")}s.entries=s.entries.filter(x=>x.date!=d);s.entries.push(x);s.entries.sort((a,b)=>b.date.localeCompare(a.date));save()}
-function settings(){s.settings.target=+$("target").value||0;s.settings.days=+$("days").value||5;save();alert("Einstellungen gespeichert.")}
-function workdays(){let n=0,d=new Date(new Date().getFullYear(),new Date().getMonth(),1),now=new Date();for(;d<=now;d.setDate(d.getDate()+1))if(d.getDay()>0&&d.getDay()<6)n++;return n}
-function render(){let ym=new Date().toISOString().slice(0,7),ds=new Date().toISOString().slice(0,10),e=s.entries.filter(x=>x.date.startsWith(ym)),today=s.entries.filter(x=>x.date==ds).reduce((a,x)=>a+x.mins,0),month=e.reduce((a,x)=>a+x.mins,0),should=workdays()*s.settings.target*60,ot=month-should;$("today").textContent=fmt(today);$("month").textContent=fmt(month);$("should").textContent=fmt(should);$("ot").textContent=fmt(ot);$("otbox").className="metric "+(ot>=0?"good":"minus");$("summary").innerHTML='<div class="row"><span>Arbeitstage</span><b>'+e.filter(x=>x.type=="work").length+'</b></div><div class="row"><span>Urlaub</span><b>'+e.filter(x=>x.type=="vacation").length+'</b></div><div class="row"><span>Krank</span><b>'+e.filter(x=>x.type=="sick").length+'</b></div>';$("list").innerHTML=s.entries.length?s.entries.map(x=>'<div class="row"><div><b>'+new Date(x.date+"T12:00").toLocaleDateString("de-DE",{weekday:"short",day:"2-digit",month:"2-digit"})+'</b><br><span class="muted">'+(x.type=="work"?x.start+" – "+x.end+" · Pause "+x.br+" Min.":x.type=="vacation"?"Urlaub":"Krank")+'</span></div><div><b>'+(x.type=="work"?fmt(x.mins):'<span class="badge">'+(x.type=="vacation"?"Urlaub":"Krank")+"</span>")+'</b><br><button class="danger" onclick="del('"+x.date+"')">Löschen</button></div></div>').join(""):"<span class='muted'>Noch keine Einträge.</span>"}
-function del(d){s.entries=s.entries.filter(x=>x.date!=d);save()}function clearAll(){if(confirm("Alle Daten löschen?")){s.entries=[];save()}}render();
-</script></body></html>
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Meine Arbeitszeit</title>
+
+<style>
+body{margin:0;background:#f2f2f7;color:#111;font-family:-apple-system,BlinkMacSystemFont,Arial,sans-serif}
+.wrap{max-width:560px;margin:auto;padding:18px 15px 40px}
+h1{font-size:32px;margin:8px 0 3px}
+.sub,.muted{color:#777}
+.card{background:#fff;border-radius:18px;padding:17px;margin:12px 0;box-shadow:0 1px 4px #0001}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{font-size:13px;color:#666;display:block;margin:10px 0 5px}
+input,select{width:100%;padding:12px;border:1px solid #ddd;border-radius:12px;font-size:17px;background:#fafafa;box-sizing:border-box}
+button{width:100%;border:0;border-radius:13px;padding:13px;font-size:16px;font-weight:650;background:#07f;color:white;margin-top:11px}
+.secondary{background:#e9e9ee;color:#111}
+.danger{background:none;color:#d00;padding:4px;width:auto;font-size:13px}
+.hidden{display:none}
+.error{color:#c00;font-size:14px;margin-top:10px}
+.total{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.metric{background:#f7f7fa;border-radius:14px;padding:13px}
+.big{font-size:27px;font-weight:750}
+.row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #eee;gap:8px}
+.row:last-child{border:0}
+.good{background:#e6f7ea}
+.minus{background:#fff0f0}
+.badge{padding:5px 8px;border-radius:8px;background:#eee;font-size:12px}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+<div class="wrap">
+
+<div id="loginView">
+
+<h1>Meine Arbeitszeit</h1>
+<div class="sub">Deine Arbeitszeiten in der Cloud</div>
+
+<div class="card">
+
+<h3 id="loginTitle">Anmelden</h3>
+
+<div id="nameArea" class="hidden">
+<label>Name</label>
+<input id="name" type="text" placeholder="Vor- und Nachname">
+</div>
+
+<label>E-Mail</label>
+<input id="email" type="email" placeholder="name@beispiel.de">
+
+<label>Passwort</label>
+<input id="password" type="password" placeholder="Mindestens 6 Zeichen">
+
+<button id="loginButton" onclick="login()">Anmelden</button>
+
+<button class="secondary" id="switchButton" onclick="switchMode()">
+Noch kein Konto? Registrieren
+</button>
+
+<div id="loginError" class="error"></div>
+
+</div>
+</div>
+
+
+<div id="appView" class="hidden">
+
+<h1>Arbeitszeit</h1>
+<div class="sub" id="welcome"></div>
+
+<div class="card">
+
+<h3>Arbeitszeit eintragen</h3>
+
+<div class="grid">
+
+<div>
+<label>Datum</label>
+<input id="date" type="date">
+</div>
+
+<div>
+<label>Art</label>
+<select id="type">
+<option value="work">Arbeit</option>
+<option value="vacation">Urlaub</option>
+<option value="sick">Krank</option>
+<option value="other">Sonstiges</option>
+</select>
+</div>
+
+</div>
+
+<div id="workFields">
+
+<div class="grid">
+
+<div>
+<label>Beginn</label>
+<input id="start" type="time" value="08:00">
+</div>
+
+<div>
+<label>Ende</label>
+<input id="end" type="time" value="17:00">
+</div>
+
+</div>
+
+<label>Pause (Min.)</label>
+<input id="break" type="number" min="0" value="30">
+
+</div>
+
+<label>Notiz</label>
+<input id="note" type="text" placeholder="Optional">
+
+<button onclick="saveEntry()">Speichern</button>
+
+</div>
+
+
+<div class="card">
+
+<h3>Sollzeit</h3>
+
+<div class="grid">
+
+<div>
+<label>Stunden pro Tag</label>
+<input id="target" type="number" min="0" step=".25">
+</div>
+
+<div>
+<label>Tage pro Woche</label>
+<input id="days" type="number" min="1" max="7">
+</div>
+
+</div>
+
+<button class="secondary" onclick="saveSettings()">
+Einstellungen speichern
+</button>
+
+</div>
+
+
+<div class="card total">
+
+<div class="metric">
+<div class="muted">Heute</div>
+<div class="big" id="today">0:00 h</div>
+</div>
+
+<div class="metric" id="otbox">
+<div class="muted">Überstunden</div>
+<div class="big" id="ot">0:00 h</div>
+</div>
+
+<div class="metric">
+<div class="muted">Monat</div>
+<div class="big" id="month">0:00 h</div>
+</div>
+
+<div class="metric">
+<div class="muted">Soll bis heute</div>
+<div class="big" id="should">0:00 h</div>
+</div>
+
+</div>
+
+
+<div class="card">
+<h3>Monatsübersicht</h3>
+<div id="summary"></div>
+</div>
+
+
+<div class="card">
+
+<h3>Einträge</h3>
+
+<div id="entries">
+<span class="muted">Noch keine Einträge.</span>
+</div>
+
+</div>
+
+
+<div class="card">
+<button class="secondary" onclick="logout()">Abmelden</button>
+</div>
+
+</div>
+</div>
+
+
+<script>
+
+const SUPABASE_URL =
+"https://cfavmwvwpxwpfcsamcca.supabase.co";
+
+const SUPABASE_KEY =
+"sb_publishable_MtVd8zuiQg_foQ-H_eEIpA_HmU6IkkJ";
+
+
+const sb =
+supabase.createClient(
+SUPABASE_URL,
+SUPABASE_KEY
+);
+
+
+const $ = id =>
+document.getElementById(id);
+
+
+let currentUser = null;
+let profile = null;
+let entries = [];
+let registerMode = false;
+
+
+$("date").value =
+new Date().toLocaleDateString("sv-SE");
+
+
+$("type").onchange = () => {
+
+$("workFields").style.display =
+$("type").value === "work"
+? "block"
+: "none";
+
+};
+
+
+function formatMinutes(minutes){
+
+let sign = minutes < 0 ? "-" : "";
+
+let m =
+Math.abs(Math.round(minutes));
+
+return sign +
+Math.floor(m/60) +
+":" +
+String(m%60).padStart(2,"0") +
+" h";
+
+}
+
+
+function switchMode(){
+
+registerMode = !registerMode;
+
+$("nameArea").classList.toggle(
+"hidden",
+!registerMode
+);
+
+$("loginTitle").textContent =
+registerMode
+? "Registrieren"
+: "Anmelden";
+
+$("loginButton").textContent =
+registerMode
+? "Konto erstellen"
+: "Anmelden";
+
+$("switchButton").textContent =
+registerMode
+? "Bereits registriert? Anmelden"
+: "Noch kein Konto? Registrieren";
+
+$("loginError").textContent = "";
+
+}
+
+
+async function login(){
+
+const email =
+$("email").value.trim();
+
+const password =
+$("password").value;
+
+$("loginError").textContent = "";
+
+
+if(!email || !password){
+
+$("loginError").textContent =
+"Bitte E-Mail und Passwort eingeben.";
+
+return;
+
+}
+
+
+if(registerMode){
+
+const fullName =
+$("name").value.trim();
+
+if(!fullName){
+
+$("loginError").textContent =
+"Bitte deinen Namen eingeben.";
+
+return;
+
+}
+
+
+const {data,error} =
+await sb.auth.signUp({
+
+email:email,
+
+password:password,
+
+options:{
+
+data:{
+full_name:fullName
+}
+
+}
+
+});
+
+
+if(error){
+
+$("loginError").textContent =
+error.message;
+
+return;
+
+}
+
+
+alert(
+"Konto erstellt. Falls die E-Mail-Bestätigung aktiviert ist, bestätige jetzt deine E-Mail."
+);
+
+return;
+
+}
+
+
+const {error} =
+await sb.auth.signInWithPassword({
+
+email:email,
+password:password
+
+});
+
+
+if(error){
+
+$("loginError").textContent =
+error.message;
+
+}
+
+}
+
+
+async function logout(){
+
+await sb.auth.signOut();
+
+}
+
+
+async function loadProfile(){
+
+const {data,error} =
+await sb
+.from("profiles")
+.select("*")
+.eq("id",currentUser.id)
+.maybeSingle();
+
+
+if(error)
+throw error;
+
+
+if(!data){
+
+const {data:newProfile,error:newError} =
+await sb
+.from("profiles")
+.insert({
+
+id:currentUser.id,
+
+full_name:
+currentUser.user_metadata?.full_name || "",
+
+role:"employee"
+
+})
+.select()
+.single();
+
+
+if(newError)
+throw newError;
+
+
+profile = newProfile;
+
+}
+
+else{
+
+profile = data;
+
+}
+
+
+$("target").value =
+(profile.daily_target_minutes || 480) / 60;
+
+$("days").value =
+profile.workdays_per_week || 5;
+
+
+$("welcome").textContent =
+(profile.full_name || currentUser.email)
++ " · Cloud-Speicherung";
+
+}
+
+
+async function loadEntries(){
+
+const {data,error} =
+await sb
+.from("work_entries")
+.select("*")
+.eq("user_id",currentUser.id)
+.order("work_date",{
+ascending:false
+});
+
+
+if(error)
+throw error;
+
+
+entries = data || [];
+
+render();
+
+}
+
+
+async function saveEntry(){
+
+const date =
+$("date").value;
+
+const type =
+$("type").value;
+
+
+if(!date){
+
+alert("Bitte Datum auswählen.");
+
+return;
+
+}
+
+
+let minutes =
+profile.daily_target_minutes || 480;
+
+
+let startTime = null;
+let endTime = null;
+let breakMinutes = 0;
+
+
+if(type === "work"){
+
+startTime =
+$("start").value;
+
+endTime =
+$("end").value;
+
+breakMinutes =
+Number($("break").value) || 0;
+
+
+if(!startTime || !endTime){
+
+alert(
+"Bitte Beginn und Ende eingeben."
+);
+
+return;
+
+}
+
+
+let a =
+startTime.split(":").map(Number);
+
+let b =
+endTime.split(":").map(Number);
+
+
+let start =
+a[0]*60+a[1];
+
+let end =
+b[0]*60+b[1];
+
+
+if(end < start)
+end += 1440;
+
+
+minutes =
+end-start-breakMinutes;
+
+
+if(minutes < 0){
+
+alert(
+"Die Arbeitszeit ist nach Abzug der Pause negativ."
+);
+
+return;
+
+}
+
+}
+
+
+const row = {
+
+user_id:currentUser.id,
+
+work_date:date,
+
+entry_type:type,
+
+start_time:startTime,
+
+end_time:endTime,
+
+break_minutes:breakMinutes,
+
+worked_minutes:minutes,
+
+note:$("note").value.trim()
+
+};
+
+
+const {error} =
+await sb
+.from("work_entries")
+.upsert(
+row,
+{
+onConflict:"user_id,work_date"
+}
+);
+
+
+if(error){
+
+alert(error.message);
+
+return;
+
+}
+
+
+$("note").value = "";
+
+await loadEntries();
+
+}
+
+
+async function saveSettings(){
+
+const target =
+Math.round(
+(Number($("target").value)||0)*60
+);
+
+const days =
+Number($("days").value)||5;
+
+
+const {error} =
+await sb
+.from("profiles")
+.update({
+
+daily_target_minutes:target,
+
+workdays_per_week:days
+
+})
+.eq(
+"id",
+currentUser.id
+);
+
+
+if(error){
+
+alert(error.message);
+
+return;
+
+}
+
+
+profile.daily_target_minutes =
+target;
+
+profile.workdays_per_week =
+days;
+
+
+render();
+
+
+alert(
+"Einstellungen gespeichert."
+);
+
+}
+
+
+async function deleteEntry(id){
+
+if(!confirm(
+"Eintrag wirklich löschen?"
+))
+return;
+
+
+const {error} =
+await sb
+.from("work_entries")
+.delete()
+.eq("id",id);
+
+
+if(error){
+
+alert(error.message);
+
+return;
+
+}
+
+
+await loadEntries();
+
+}
+
+
+function workdaysUntilToday(){
+
+let count = 0;
+
+let now = new Date();
+
+let d =
+new Date(
+now.getFullYear(),
+now.getMonth(),
+1
+);
+
+
+while(d <= now){
+
+let weekday =
+d.getDay();
+
+if(
+weekday !== 0 &&
+weekday !== 6
+)
+count++;
+
+d.setDate(
+d.getDate()+1
+);
+
+}
+
+
+return Math.round(
+count *
+(profile.workdays_per_week || 5)
+/
+5
+);
+
+}
+
+
+function render(){
+
+const todayDate =
+new Date().toLocaleDateString("sv-SE");
+
+const monthCode =
+todayDate.slice(0,7);
+
+
+const monthEntries =
+entries.filter(
+x =>
+x.work_date.startsWith(monthCode)
+);
+
+
+const todayMinutes =
+entries
+.filter(
+x =>
+x.work_date === todayDate
+)
+.reduce(
+(a,x) =>
+a + (x.worked_minutes || 0),
+0
+);
+
+
+const monthMinutes =
+monthEntries.reduce(
+(a,x) =>
+a + (x.worked_minutes || 0),
+0
+);
+
+
+const shouldMinutes =
+workdaysUntilToday() *
+(profile.daily_target_minutes || 480);
+
+
+const overtime =
+monthMinutes -
+shouldMinutes;
+
+
+$("today").textContent =
+formatMinutes(todayMinutes);
+
+$("month").textContent =
+formatMinutes(monthMinutes);
+
+$("should").textContent =
+formatMinutes(shouldMinutes);
+
+$("ot").textContent =
+formatMinutes(overtime);
+
+
+$("otbox").className =
+"metric " +
+(overtime >= 0
+? "good"
+: "minus");
+
+
+$("summary").innerHTML =
+
+'<div class="row"><span>Arbeitstage</span><b>' +
+monthEntries.filter(
+x=>x.entry_type==="work"
+).length +
+'</b></div>' +
+
+'<div class="row"><span>Urlaub</span><b>' +
+monthEntries.filter(
+x=>x.entry_type==="vacation"
+).length +
+'</b></div>' +
+
+'<div class="row"><span>Krank</span><b>' +
+monthEntries.filter(
+x=>x.entry_type==="sick"
+).length +
+'</b></div>';
+
+
+if(!entries.length){
+
+$("entries").innerHTML =
+'<span class="muted">Noch keine Einträge.</span>';
+
+return;
+
+}
+
+
+$("entries").innerHTML =
+entries.map(x => {
+
+let description;
+
+
+if(x.entry_type === "work"){
+
+description =
+(x.start_time || "").slice(0,5)
++
+" – "
++
+(x.end_time || "").slice(0,5)
++
+" · Pause "
++
+(x.break_minutes || 0)
++
+" Min.";
+
+}
+
+else if(
+x.entry_type === "vacation"
+){
+
+description = "Urlaub";
+
+}
+
+else if(
+x.entry_type === "sick"
+){
+
+description = "Krank";
+
+}
+
+else{
+
+description = "Sonstiges";
+
+}
+
+
+return `
+
+<div class="row">
+
+<div>
+
+<b>
+${new Date(
+x.work_date+"T12:00"
+).toLocaleDateString(
+"de-DE",
+{
+weekday:"short",
+day:"2-digit",
+month:"2-digit"
+}
+)}
+</b>
+
+<br>
+
+<span class="muted">
+${description}
+</span>
+
+</div>
+
+<div style="text-align:right">
+
+<b>
+${formatMinutes(
+x.worked_minutes || 0
+)}
+</b>
+
+<br>
+
+<button
+class="danger"
+onclick="deleteEntry('${x.id}')">
+Löschen
+</button>
+
+</div>
+
+</div>
+
+`;
+
+}).join("");
+
+}
+
+
+function showApp(){
+
+$("loginView").classList.add(
+"hidden"
+);
+
+$("appView").classList.remove(
+"hidden"
+);
+
+}
+
+
+function showLogin(){
+
+$("appView").classList.add(
+"hidden"
+);
+
+$("loginView").classList.remove(
+"hidden"
+);
+
+}
+
+
+sb.auth.onAuthStateChange(
+async(event,session) => {
+
+if(session?.user){
+
+currentUser =
+session.user;
+
+showApp();
+
+
+try{
+
+await loadProfile();
+
+await loadEntries();
+
+}
+
+catch(error){
+
+alert(
+"Fehler beim Laden: "
++
+error.message
+);
+
+}
+
+}
+
+else{
+
+currentUser = null;
+profile = null;
+entries = [];
+
+showLogin();
+
+}
+
+});
+
+
+(async()=>{
+
+const {data} =
+await sb.auth.getSession();
+
+if(!data.session)
+showLogin();
+
+})();
+
+</script>
+
+</body>
+</html>
